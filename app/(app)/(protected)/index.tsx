@@ -10,6 +10,9 @@ import { DaySelector } from "./indexComponents/DaySelector";
 import { BusCard } from "./indexComponents/BusCard";
 import { LocationSelector } from "./indexComponents/LocationSelector";
 import { AllTripsView } from "./indexComponents/AllTripsView";
+import { getIncidentsSummary } from "../../../services/api";
+import { IncidentsList } from "./indexComponents/IncidentsList";
+
 import { 
   getLocations, 
   getNextTrips, 
@@ -35,6 +38,10 @@ export default function HomeScreen() {
   const [allTripsLoading, setAllTripsLoading] = useState(false);
   const [showAllTrips, setShowAllTrips] = useState(false);
   const [searchExpanded, setSearchExpanded] = useState(false);
+  const [incidentsSummary, setIncidentsSummary] = useState<Record<string, { count: number, types: string[] }>>({});
+const [showIncidentsForTrip, setShowIncidentsForTrip] = useState<string | null>(null);
+const [selectedTripName, setSelectedTripName] = useState<string>("");
+
 
   // Lista de destinos filtrados según el origen seleccionado
   const [destinations, setDestinations] = useState<Location[]>([]);
@@ -119,11 +126,37 @@ export default function HomeScreen() {
       // Se usa el nombre de la ubicación para la búsqueda
       const tripsData = await getNextTrips(origin.name, destination.name);
       setTrips(tripsData.slice(0, 3));
+      
+      // Cargar incidencias para estos viajes
+      if (tripsData.length > 0) {
+        const tripIds = tripsData.map(trip => trip.id);
+        const summary = await getIncidentsSummary(tripIds);
+        setIncidentsSummary(summary);
+      }
     } catch (error) {
       console.error("Error searching trips:", error);
     } finally {
       setLoading(false);
     }
+  };
+
+  const handleReportSuccess = async () => {
+    // Recargar incidencias
+    if (trips.length > 0) {
+      const tripIds = trips.map(trip => trip.id);
+      try {
+        const summary = await getIncidentsSummary(tripIds);
+        setIncidentsSummary(summary);
+      } catch (error) {
+        console.error("Error refreshing incidents:", error);
+      }
+    }
+  };
+  
+  // Función para mostrar detalles de incidencias
+  const showIncidentDetails = (tripId: string, routeName: string) => {
+    setShowIncidentsForTrip(tripId);
+    setSelectedTripName(routeName);
   };
 
   const handleShowAllTrips = async () => {
@@ -215,28 +248,30 @@ export default function HomeScreen() {
             <Text className="text-gray-500 text-sm">Temps real</Text>
           </View>
           <View className="bg-white rounded-xl p-4 shadow mb-6">
-            {loading ? (
-              <View className="py-10 items-center">
-                <ActivityIndicator size="large" color="#3B82F6" />
-                <Text className="mt-3 text-gray-600">Buscant busos...</Text>
-              </View>
-            ) : trips.length > 0 ? (
-              trips.slice(0, 3).map(trip => (
-                <BusCard 
-                  key={trip.id}
-                  line={trip.route_name}
-                  origin={origin ? origin.name : ""}
-                  destination={destination ? destination.name : ""}
-                  time={trip.departure_time}
-                  status={trip.status === 'delayed' ? `Retrasado ${trip.delay_minutes} min` : 'A tiempo'}
-                  occupancy={trip.occupancy_level as 'low' | 'medium' | 'high'}
-                />
-              ))
-            ) : (
-              <View className="py-10 items-center">
-                <Text className="text-gray-600">No hay busos disponibles para esta ruta.</Text>
-              </View>
-            )}
+          {loading ? (
+            <View className="py-10 items-center">
+              <ActivityIndicator size="large" color="#3B82F6" />
+              <Text className="mt-3 text-gray-600">Buscant busos...</Text>
+            </View>
+          ) : trips.length > 0 ? (
+            trips.slice(0, 3).map(trip => (
+              <BusCard 
+                key={trip.id}
+                id={trip.id}
+                line={trip.route_name}
+                origin={origin ? origin.name : ""}
+                destination={destination ? destination.name : ""}
+                time={trip.departure_time}
+                routeNumber={trip.route_num} // Pasamos el número de ruta de los datos del viaje
+                incidents={incidentsSummary[trip.id]}
+                onReportSuccess={handleReportSuccess}
+              />
+            ))
+          ) : (
+            <View className="py-10 items-center">
+              <Text className="text-gray-600">No hay busos disponibles para esta ruta.</Text>
+            </View>
+          )}
           </View>
         </View>
 

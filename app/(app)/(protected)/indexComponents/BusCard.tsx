@@ -1,65 +1,80 @@
-import React from "react";
-import { View } from "react-native";
+import React, { useState } from "react";
+import { View, TouchableOpacity } from "react-native";
 import { Text } from "@/components/ui/text";
-import { Clock } from "lucide-react-native";
+import { Clock, AlertTriangle, AlertCircle, MessageSquare } from "lucide-react-native";
+import { ReportIncidentModal } from "./ReportIncidentModal";
+import { IncidentsList } from "./IncidentsList";
+import { useRouter } from "expo-router";
 
 interface BusCardProps {
+  id: string;
   line: string;
   origin: string;
   destination: string;
   time: string;
-  status: string;
-  occupancy: 'low' | 'medium' | 'high' | 'full' | 'empty' | 'unknown';
+  routeNumber?: string; // Este será el num_ruta de la tabla routes
+  incidents?: {
+    count: number;
+    types: ('delay' | 'full_bus' | 'incident' | 'other')[];
+  };
+  onReportSuccess?: () => void;
 }
 
-export function BusCard({ line, origin, destination, time, status, occupancy }: BusCardProps) {
-  // Función para renderizar el estado de ocupación
-  const renderOccupancy = () => {
-    let icon, text;
-    
-    switch(occupancy) {
-      case 'empty':
-      case 'low':
-        icon = "👍";
-        text = "Seients disponibles";
-        break;
-      case 'medium':
-        icon = "👌";
-        text = "Va omplint-se";
-        break;
-      case 'high':
-      case 'full':
-        icon = "👀";
-        text = "Acostuma a anar ple";
-        break;
-      default:
-        icon = "❓";
-        text = "Ocupació desconeguda";
-    }
+export function BusCard({ 
+  id, 
+  line, 
+  origin, 
+  destination, 
+  time, 
+  status, 
+  occupancy, 
+  routeNumber, // Nuevo parámetro
+  incidents,
+  onReportSuccess = () => {} 
+}: BusCardProps) {
+  const [reportModalVisible, setReportModalVisible] = useState(false);
+  const [incidentsListVisible, setIncidentsListVisible] = useState(false);
+  const router = useRouter();
+
+  // Renderiza los indicadores de incidencias si existen
+  const renderIncidentsBadge = () => {
+    if (!incidents || incidents.count === 0) return null;
     
     return (
-      <View className="flex-row items-center">
-        <Text className="mr-1 text-base">{icon}</Text>
-        <Text className="text-gray-700 text-xs">{text}</Text>
-      </View>
+      <TouchableOpacity 
+        onPress={() => setIncidentsListVisible(true)}
+        className="absolute top-2 right-2 bg-red-100 px-2 py-1 rounded-full flex-row items-center"
+      >
+        <AlertCircle size={12} color="#dc2626" />
+        <Text className="text-red-600 text-xs ml-1 font-medium">{incidents.count}</Text>
+      </TouchableOpacity>
     );
   };
 
+  const handleReportSuccess = () => {
+    onReportSuccess();
+  };
+
   return (
-    <View className="bg-white p-4 rounded-lg mb-3 shadow-sm">
-      <View className="flex-row justify-between items-center mb-4">
-        <View className="bg-blue-100 py-1 px-3 rounded-full flex-1 mr-2">
-          <Text className="text-blue-800 font-bold" numberOfLines={1} ellipsizeMode="tail">
-            {line}
-          </Text>
-        </View>
-        <View className="min-w-20 items-end">
-          <Text 
-            className={status.includes('Retrasado') ? 'text-orange-500' : 'text-green-600'}
-          >
-            {status}
-          </Text>
-        </View>
+    <View className="bg-white p-4 rounded-lg mb-3 shadow-sm relative">
+      {/* Indicador de incidencias */}
+      {renderIncidentsBadge()}
+      
+      {/* Título con número de ruta */}
+      <View className="flex-row items-center mb-4">
+        {routeNumber ? (
+          <View className="bg-blue-500 py-1 px-2 rounded-md">
+            <Text className="text-white font-bold text-sm">
+              {routeNumber}
+            </Text>
+          </View>
+        ) : (
+          <View className="bg-blue-100 py-1 px-2 rounded-lg">
+            <Text className="text-blue-800 font-bold text-sm" numberOfLines={1} ellipsizeMode="tail">
+              {line}
+            </Text>
+          </View>
+        )}
       </View>
       
       <View className="flex-row mb-4">
@@ -79,13 +94,71 @@ export function BusCard({ line, origin, destination, time, status, occupancy }: 
         </View>
       </View>
       
-      <View className="flex-row justify-between items-center">
-        <View className="flex-row items-center">
-          <Clock size={16} color="#666" />
-          <Text className="ml-1 font-medium">{time}</Text>
-        </View>
-        {renderOccupancy()}
+      <View className="flex-row items-center">
+        <Clock size={16} color="#666" />
+        <Text className="ml-1 font-medium">{time}</Text>
       </View>
+      
+      {/* Botones para acciones */}
+      <View className="mt-3 flex-row border-t border-gray-100 pt-2">
+        {/* Botón para reportar incidencias */}
+        <TouchableOpacity 
+          onPress={() => setReportModalVisible(true)}
+          className="flex-1 flex-row items-center justify-center py-2"
+        >
+          <AlertTriangle size={14} color="#6b7280" />
+          <Text className="ml-1 text-gray-500 text-sm">Reportar</Text>
+        </TouchableOpacity>
+        
+        {/* Separador vertical */}
+        <View className="h-full w-px bg-gray-100" />
+        
+        {/* Botón para ver incidencias */}
+        <TouchableOpacity 
+          onPress={() => setIncidentsListVisible(true)}
+          className="flex-1 flex-row items-center justify-center py-2"
+        >
+          <MessageSquare size={14} color="#6b7280" />
+          <Text className="ml-1 text-gray-500 text-sm">
+            {incidents && incidents.count > 0 ? `Ver ${incidents.count}` : "Ver incidències"}
+          </Text>
+        </TouchableOpacity>
+      </View>
+      
+      {/* Botón destacado para ver incidencias cuando hay incidencias reportadas */}
+      {incidents && incidents.count > 0 && (
+        <TouchableOpacity
+          onPress={() => setIncidentsListVisible(true)}
+          className="mt-2 bg-red-50 rounded-lg p-2 flex-row items-center border border-red-100"
+        >
+          <AlertCircle size={18} color="#dc2626" />
+          <View className="flex-1 ml-2">
+            <Text className="text-red-800 font-medium">
+              {incidents.count} {incidents.count === 1 ? 'incidència' : 'incidències'} reportades
+            </Text>
+            <Text className="text-red-600 text-xs mt-0.5">
+              Toca per veure les incidències d'aquesta ruta
+            </Text>
+          </View>
+        </TouchableOpacity>
+      )}
+      
+      {/* Modal para reportar incidencias */}
+      <ReportIncidentModal 
+        visible={reportModalVisible}
+        onClose={() => setReportModalVisible(false)}
+        tripId={id}
+        routeName={routeNumber || line}
+        onReportSuccess={handleReportSuccess}
+      />
+      
+      {/* Modal para ver lista de incidencias */}
+      <IncidentsList
+        visible={incidentsListVisible}
+        onClose={() => setIncidentsListVisible(false)}
+        tripId={id}
+        routeName={routeNumber || line}
+      />
     </View>
   );
 }

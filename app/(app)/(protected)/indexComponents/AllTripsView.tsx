@@ -79,31 +79,28 @@ export function AllTripsView({
       
       {/* Lista de viajes */}
       <ScrollView className="p-4">
-        {loading ? (
-          <View className="py-10 items-center">
-            <ActivityIndicator size="large" color="#3B82F6" />
-            <Text className="mt-3 text-gray-600">Carregant busos...</Text>
-          </View>
-        ) : validTrips.length > 0 ? (
-          <>
-            <Text className="text-gray-500 mb-4">{validTrips.length} viajes encontrados</Text>
-            {validTrips.map(trip => (
-              <BusCard
-                key={trip.trip_id}
-                line={trip.route_name || "Sin nombre"}
-                origin={trip.origin_name || "Origen desconocido"}
-                destination={trip.destination_name || "Destino desconocido"}
-                time={trip.departure_time || "--:--"}
-                status={trip.status === 'delayed' ? `Retrasado ${trip.delay_minutes} min` : 'A tiempo'}
-                occupancy={trip.occupancy_level as 'low' | 'medium' | 'high'}
-              />
-            ))}
-          </>
-        ) : (
-          <View className="py-10 items-center">
-            <Text className="text-gray-600 text-center">No hi ha busos disponibles per a aquesta ruta.</Text>
-          </View>
-        )}
+      {validTrips.length > 0 ? (
+        <>
+          <Text className="text-gray-500 mb-4">{validTrips.length} viajes encontrados</Text>
+          {validTrips.map(trip => (
+            <BusCard
+              key={trip.trip_id}
+              id={trip.trip_id}
+              line={trip.route_name || "Sin nombre"}
+              origin={trip.origin_name || "Origen desconocido"}
+              destination={trip.destination_name || "Destino desconocido"}
+              time={trip.departure_time || "--:--"}
+              routeNumber={trip.route_num} // Añadir el número de ruta
+              status={trip.status === 'delayed' ? `Retrasado ${trip.delay_minutes} min` : 'A tiempo'}
+              occupancy={trip.occupancy_level as 'low' | 'medium' | 'high'}
+            />
+          ))}
+        </>
+      ) : (
+        <View className="py-10 items-center">
+          <Text className="text-gray-600 text-center">No hi ha busos disponibles per a aquesta ruta.</Text>
+        </View>
+      )}
       </ScrollView>
     </View>
   );

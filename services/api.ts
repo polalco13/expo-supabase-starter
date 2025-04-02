@@ -334,39 +334,6 @@ export async function voteIncident(incidentId: string): Promise<void> {
   }
 }
 
-// Función para obtener un resumen de incidencias para varios viajes
-export async function getIncidentsSummary(tripIds: string[]): Promise<Record<string, { count: number, types: ('delay' | 'full_bus' | 'incident' | 'other')[] }>> {
-  if (tripIds.length === 0) return {};
-  
-  const { data, error } = await supabase
-    .from('incidents')
-    .select('id, trip_id, type')
-    .in('trip_id', tripIds)
-    .eq('status', 'active');
-  
-  if (error) {
-    console.error('Error al obtener resumen de incidencias:', error);
-    throw error;
-  }
-  
-  // Agrupar incidencias por viaje
-  const summary: Record<string, { count: number, types: ('delay' | 'full_bus' | 'incident' | 'other')[] }> = {};
-  
-  data.forEach(incident => {
-    if (!summary[incident.trip_id]) {
-      summary[incident.trip_id] = { count: 0, types: [] };
-    }
-    
-    summary[incident.trip_id].count++;
-    
-    if (!summary[incident.trip_id].types.includes(incident.type)) {
-      summary[incident.trip_id].types.push(incident.type);
-    }
-  });
-  
-  return summary;
-}
-
 export async function getAllActiveIncidents(): Promise<Incident[]> {
   const { data, error } = await supabase
     .from('incidents')
@@ -568,3 +535,70 @@ export function addIncidentsNavigation(router: any) {
     }
   };
 }
+
+export async function getIncidenciesByRoute(originName: string, destinationName: string): Promise<Record<string, { count: number, types: ('delay' | 'full_bus' | 'incident' | 'other')[] }>> {
+  try {
+    // Obtenemos todas las incidencias activas para la ruta especificada
+    const { data, error } = await supabase
+      .from('incidents')
+      .select(`
+        id,
+        type,
+        trips:trip_id (
+          id,
+          route_id,
+          routes:route_id (
+            id,
+            origin:origin_id (id, name),
+            destination:destination_id (id, name)
+          )
+        )
+      `)
+      .eq('status', 'active');
+    
+    if (error) {
+      console.error('Error al obtener incidencias por ruta:', error);
+      throw error;
+    }
+    
+    // Filtrar incidencias por origen y destino
+    const filteredIncidents = (data || []).filter(incident => {
+      const origin = incident.trips?.routes?.origin?.name || '';
+      const destination = incident.trips?.routes?.destination?.name || '';
+      
+      // Verificar si coincide con origen y destino proporcionados
+      const originMatch = origin.toLowerCase().includes(originName.toLowerCase()) || 
+                          originName.toLowerCase().includes(origin.toLowerCase());
+      
+      const destMatch = destination.toLowerCase().includes(destinationName.toLowerCase()) || 
+                        destinationName.toLowerCase().includes(destination.toLowerCase());
+      
+      return originMatch && destMatch;
+    });
+    
+    // Agrupar por trip_id
+    const incidentsByTrip: Record<string, { count: number, types: ('delay' | 'full_bus' | 'incident' | 'other')[] }> = {};
+    
+    filteredIncidents.forEach(incident => {
+      const tripId = incident.trips?.id;
+      
+      if (tripId) {
+        if (!incidentsByTrip[tripId]) {
+          incidentsByTrip[tripId] = { count: 0, types: [] };
+        }
+        
+        incidentsByTrip[tripId].count++;
+        
+        if (!incidentsByTrip[tripId].types.includes(incident.type)) {
+          incidentsByTrip[tripId].types.push(incident.type);
+        }
+      }
+    });
+    
+    return incidentsByTrip;
+  } catch (error) {
+    console.error('Error en getIncidenciesByRoute:', error);
+    return {};
+  }
+}
+

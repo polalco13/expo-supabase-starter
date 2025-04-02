@@ -3,51 +3,54 @@ import { View, ScrollView, TouchableOpacity, ActivityIndicator } from "react-nat
 import { SafeAreaView } from "@/components/safe-area-view";
 import { Text } from "@/components/ui/text";
 import { H2 } from "@/components/ui/typography";
-import { MapPin, List, ChevronUp, ChevronDown, Calendar, Clock } from "lucide-react-native";
+import { MapPin, List, ChevronUp, ChevronDown, Calendar, Clock, AlertCircle } from "lucide-react-native";
 import Constants from 'expo-constants';
 import { SearchBar } from "./indexComponents/SearchBar";
 import { DaySelector } from "./indexComponents/DaySelector";
 import { BusCard } from "./indexComponents/BusCard";
 import { LocationSelector } from "./indexComponents/LocationSelector";
 import { AllTripsView } from "./indexComponents/AllTripsView";
-import { getIncidentsSummary } from "../../../services/api";
-import { IncidentsList } from "./indexComponents/IncidentsList";
-
 import { 
   getLocations, 
   getNextTrips, 
   getAllTripsByDay, 
   getDestinationsByOrigin,
+  getIncidenciesByRoute,
   Trip, 
   AllTripsResult,
   Location 
 } from "../../../services/api";
 import { StatusBar } from "expo-status-bar";
+import { useRouter } from "expo-router";
 
 export default function HomeScreen() {
-  // Ahora almacenamos objetos completos de tipo Location.
+  // Estados para ubicaciones
   const [locations, setLocations] = useState<Location[]>([]);
   const [origin, setOrigin] = useState<Location | null>(null);
   const [destination, setDestination] = useState<Location | null>(null);
   const [selectedDay, setSelectedDay] = useState("Hoy");
   const [modalVisible, setModalVisible] = useState(false);
   const [selectingField, setSelectingField] = useState<'origin' | 'destination' | null>(null);
+  
+  // Estados para viajes
   const [trips, setTrips] = useState<Trip[]>([]);
   const [allTrips, setAllTrips] = useState<AllTripsResult[]>([]);
   const [loading, setLoading] = useState(false);
   const [allTripsLoading, setAllTripsLoading] = useState(false);
   const [showAllTrips, setShowAllTrips] = useState(false);
+  
+  // Estado para la interfaz
   const [searchExpanded, setSearchExpanded] = useState(false);
-  const [incidentsSummary, setIncidentsSummary] = useState<Record<string, { count: number, types: string[] }>>({});
-const [showIncidentsForTrip, setShowIncidentsForTrip] = useState<string | null>(null);
-const [selectedTripName, setSelectedTripName] = useState<string>("");
-
-
+  
+  // Estado para incidencias (unificado)
+  const [incidenciesByRoute, setIncidenciesByRoute] = useState<Record<string, { count: number, types: ('delay' | 'full_bus' | 'incident' | 'other')[] }>>({});
+  
   // Lista de destinos filtrados según el origen seleccionado
   const [destinations, setDestinations] = useState<Location[]>([]);
 
   const days = ["Hoy", "Mañana", "Lunes", "Martes", "Miércoles"];
   const statusBarHeight = Constants.statusBarHeight || 0;
+  const router = useRouter();
 
   // Cargar todas las ubicaciones al iniciar
   useEffect(() => {
@@ -127,36 +130,14 @@ const [selectedTripName, setSelectedTripName] = useState<string>("");
       const tripsData = await getNextTrips(origin.name, destination.name);
       setTrips(tripsData.slice(0, 3));
       
-      // Cargar incidencias para estos viajes
-      if (tripsData.length > 0) {
-        const tripIds = tripsData.map(trip => trip.id);
-        const summary = await getIncidentsSummary(tripIds);
-        setIncidentsSummary(summary);
-      }
+      // Cargar incidencias para esta ruta (unificadas)
+      const incidences = await getIncidenciesByRoute(origin.name, destination.name);
+      setIncidenciesByRoute(incidences);
     } catch (error) {
       console.error("Error searching trips:", error);
     } finally {
       setLoading(false);
     }
-  };
-
-  const handleReportSuccess = async () => {
-    // Recargar incidencias
-    if (trips.length > 0) {
-      const tripIds = trips.map(trip => trip.id);
-      try {
-        const summary = await getIncidentsSummary(tripIds);
-        setIncidentsSummary(summary);
-      } catch (error) {
-        console.error("Error refreshing incidents:", error);
-      }
-    }
-  };
-  
-  // Función para mostrar detalles de incidencias
-  const showIncidentDetails = (tripId: string, routeName: string) => {
-    setShowIncidentsForTrip(tripId);
-    setSelectedTripName(routeName);
   };
 
   const handleShowAllTrips = async () => {
@@ -165,11 +146,26 @@ const [selectedTripName, setSelectedTripName] = useState<string>("");
     try {
       const allTripsData = await getAllTripsByDay(selectedDay, origin.name, destination.name);
       setAllTrips(allTripsData);
+      
+      // No necesitamos cargar incidencias de nuevo, ya las tenemos
       setShowAllTrips(true);
     } catch (error) {
       console.error("Error loading all trips:", error);
     } finally {
       setAllTripsLoading(false);
+    }
+  };
+
+  // Función para manejar el éxito del reporte de incidencia
+  const handleReportSuccess = async () => {
+    // Recargar incidencias para toda la ruta
+    if (origin && destination) {
+      try {
+        const incidences = await getIncidenciesByRoute(origin.name, destination.name);
+        setIncidenciesByRoute(incidences);
+      } catch (error) {
+        console.error("Error refreshing incidents:", error);
+      }
     }
   };
 
@@ -248,30 +244,30 @@ const [selectedTripName, setSelectedTripName] = useState<string>("");
             <Text className="text-gray-500 text-sm">Temps real</Text>
           </View>
           <View className="bg-white rounded-xl p-4 shadow mb-6">
-          {loading ? (
-            <View className="py-10 items-center">
-              <ActivityIndicator size="large" color="#3B82F6" />
-              <Text className="mt-3 text-gray-600">Buscant busos...</Text>
-            </View>
-          ) : trips.length > 0 ? (
-            trips.slice(0, 3).map(trip => (
-              <BusCard 
-                key={trip.id}
-                id={trip.id}
-                line={trip.route_name}
-                origin={origin ? origin.name : ""}
-                destination={destination ? destination.name : ""}
-                time={trip.departure_time}
-                routeNumber={trip.route_num} // Pasamos el número de ruta de los datos del viaje
-                incidents={incidentsSummary[trip.id]}
-                onReportSuccess={handleReportSuccess}
-              />
-            ))
-          ) : (
-            <View className="py-10 items-center">
-              <Text className="text-gray-600">No hay busos disponibles para esta ruta.</Text>
-            </View>
-          )}
+            {loading ? (
+              <View className="py-10 items-center">
+                <ActivityIndicator size="large" color="#3B82F6" />
+                <Text className="mt-3 text-gray-600">Buscant busos...</Text>
+              </View>
+            ) : trips.length > 0 ? (
+              trips.slice(0, 3).map(trip => (
+                <BusCard 
+                  key={trip.id}
+                  id={trip.id}
+                  line={trip.route_name}
+                  origin={origin ? origin.name : ""}
+                  destination={destination ? destination.name : ""}
+                  time={trip.departure_time}
+                  routeNumber={trip.route_num}
+                  incidents={incidenciesByRoute[trip.id]}
+                  onReportSuccess={handleReportSuccess}
+                />
+              ))
+            ) : (
+              <View className="py-10 items-center">
+                <Text className="text-gray-600">No hay busos disponibles para esta ruta.</Text>
+              </View>
+            )}
           </View>
         </View>
 
@@ -350,10 +346,20 @@ const [selectedTripName, setSelectedTripName] = useState<string>("");
             selectedDay={selectedDay}
             origin={origin ? origin.name : ""}
             destination={destination ? destination.name : ""}
+            incidenciesByRoute={incidenciesByRoute}
             onClose={() => setShowAllTrips(false)}
           />
         </View>
       )}
+      
+      {/* Botón flotante para ver todas las incidencias */}
+      <TouchableOpacity
+        onPress={() => router.push('/all-incidents')}
+        className="absolute bottom-24 right-4 bg-blue-500 w-14 h-14 rounded-full shadow-lg items-center justify-center"
+        style={{ elevation: 5 }}
+      >
+        <AlertCircle size={24} color="white" />
+      </TouchableOpacity>
     </SafeAreaView>
   );
 }

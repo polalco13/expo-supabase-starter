@@ -18,8 +18,8 @@ export default function WelcomeScreen() {
     >
       <SafeAreaView className="flex flex-1 p-2">
         {/* Overlay semitransparente para mejorar la legibilidad */}
-        <View className="absolute inset-0 bg-black/60" />
-        
+        <View className="absolute inset-0 bg-[rgba(0,20,50,0.6)]" />
+        {/* Contenedor principal */}        
         <View className="flex-1 relative justify-between">
           {/* Parte superior: Logo, título y subtítulo */}
           <View className="items-center">

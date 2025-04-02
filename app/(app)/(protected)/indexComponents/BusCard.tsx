@@ -40,7 +40,7 @@ export function BusCard({ line, origin, destination, time, status, occupancy }: 
     return (
       <View className="flex-row items-center">
         <Text className="mr-1 text-base">{icon}</Text>
-        <Text className="text-gray-700 text-sm">{text}</Text>
+        <Text className="text-gray-700 text-xs">{text}</Text>
       </View>
     );
   };
@@ -48,14 +48,18 @@ export function BusCard({ line, origin, destination, time, status, occupancy }: 
   return (
     <View className="bg-white p-4 rounded-lg mb-3 shadow-sm">
       <View className="flex-row justify-between items-center mb-4">
-        <View className="bg-blue-100 py-1 px-3 rounded-full">
-          <Text className="text-blue-800 font-bold">{line}</Text>
+        <View className="bg-blue-100 py-1 px-3 rounded-full flex-1 mr-2">
+          <Text className="text-blue-800 font-bold" numberOfLines={1} ellipsizeMode="tail">
+            {line}
+          </Text>
         </View>
-        <Text 
-          className={status.includes('Retrasado') ? 'text-orange-500' : 'text-green-600'}
-        >
-          {status}
-        </Text>
+        <View className="min-w-20 items-end">
+          <Text 
+            className={status.includes('Retrasado') ? 'text-orange-500' : 'text-green-600'}
+          >
+            {status}
+          </Text>
+        </View>
       </View>
       
       <View className="flex-row mb-4">
@@ -67,10 +71,10 @@ export function BusCard({ line, origin, destination, time, status, occupancy }: 
         
         <View className="flex-1 justify-between h-16">
           <View>
-            <Text className="text-gray-800">{origin}</Text>
+            <Text className="text-gray-800" numberOfLines={1} ellipsizeMode="tail">{origin}</Text>
           </View>
           <View>
-            <Text className="text-gray-800">{destination}</Text>
+            <Text className="text-gray-800" numberOfLines={1} ellipsizeMode="tail">{destination}</Text>
           </View>
         </View>
       </View>

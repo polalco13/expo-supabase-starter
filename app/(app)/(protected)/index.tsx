@@ -256,25 +256,55 @@ export default function HomeScreen() {
               onSelectDay={setSelectedDay}
             />
           </View>
-          <TouchableOpacity 
-            onPress={handleShowAllTrips}
-            className="bg-blue-500 py-3 rounded-lg flex-row justify-center items-center"
-          >
-            <List size={18} color="#FFFFFF" />
-            <Text className="text-white font-bold ml-2">
-              Veure tots els horaris: {origin ? origin.name : ""} → {destination ? destination.name : ""}
-            </Text>
-          </TouchableOpacity>
+          
+          {/* Botón Veure tots els horaris mejorado */}
+          <View className="mb-4 bg-white rounded-xl overflow-hidden shadow">
+            <View className="px-4 py-3 bg-blue-50">
+              <Text className="text-blue-800 font-medium">Consulta l'horari complet</Text>
+            </View>
+            
+            <View className="p-4">
+              <View className="flex-row items-center justify-between mb-4 border-b border-gray-100 pb-3">
+                <View className="flex-1">
+                  <Text className="text-xs text-gray-500 mb-1">Origen</Text>
+                  <Text className="font-semibold text-gray-800" numberOfLines={1} ellipsizeMode="tail">
+                    {origin ? origin.name : "Selecciona origen"}
+                  </Text>
+                </View>
+                <View className="mx-2">
+                  <Text className="text-gray-400">→</Text>
+                </View>
+                <View className="flex-1">
+                  <Text className="text-xs text-gray-500 mb-1">Destí</Text>
+                  <Text className="font-semibold text-gray-800" numberOfLines={1} ellipsizeMode="tail">
+                    {destination ? destination.name : "Selecciona destí"}
+                  </Text>
+                </View>
+              </View>
+              
+              <TouchableOpacity 
+                onPress={handleShowAllTrips}
+                className="bg-blue-500 py-3 rounded-lg flex-row justify-center items-center"
+                activeOpacity={0.8}
+              >
+                <Calendar size={18} color="#FFFFFF" />
+                <Text className="text-white font-bold ml-2">
+                  Veure tots els horaris
+                </Text>
+              </TouchableOpacity>
+            </View>
+          </View>
         </View>
-<LocationSelector 
-  visible={modalVisible}
-  onClose={() => setModalVisible(false)}
-  onSelect={handleSelectLocation}
-  title={selectingField === 'origin' ? 'Selecciona origen' : 'Selecciona destí'}
-  locations={selectingField === 'origin' 
-    ? locations.map(loc => loc.name) 
-    : destinations.map(dest => dest.name)}
-/>
+
+        <LocationSelector 
+          visible={modalVisible}
+          onClose={() => setModalVisible(false)}
+          onSelect={handleSelectLocation}
+          title={selectingField === 'origin' ? 'Selecciona origen' : 'Selecciona destí'}
+          locations={selectingField === 'origin' 
+            ? locations.map(loc => loc.name) 
+            : destinations.map(dest => dest.name)}
+        />
       </ScrollView>
 
       {showAllTrips && (

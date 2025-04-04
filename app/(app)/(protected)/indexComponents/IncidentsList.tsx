@@ -184,7 +184,7 @@ export function IncidentsList({ visible, onClose, tripId, routeName }: Incidents
               onPress={onClose}
               className="py-2"
             >
-              <Text className="text-center text-blue-500 font-medium">Tancar</Text>
+              <Text className="text-center text-blue-500 font-medium mb-5">Tancar</Text>
             </TouchableOpacity>
           </View>
         </View>

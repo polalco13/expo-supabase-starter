@@ -57,7 +57,7 @@ export type AllTripsResult = {
 };
 
 export type Trip = {
-  origin_num_ruta: string | undefined;
+  [x: string]: string | undefined;
   id: string;
   route_name: string;
   departure_time: string;
@@ -65,6 +65,7 @@ export type Trip = {
   status: 'scheduled' | 'in_progress' | 'completed' | 'cancelled' | 'delayed';
   delay_minutes: number;
   occupancy_level: 'empty' | 'low' | 'medium' | 'high' | 'full' | 'unknown';
+  has_passed?: boolean; // Nuevo campo para indicar si el bus ya pasó
 };
 
 export type ReportType = 'delay' | 'full_bus' | 'incident' | 'other';
@@ -94,13 +95,21 @@ export async function getLocations(): Promise<Location[]> {
 
 export async function getNextTrips(origin: string, destination: string): Promise<Trip[]> {
   const now = new Date();
+  
+  // Creamos una fecha 15 minutos en el pasado
+  const fifteenMinutesAgo = new Date(now);
+  fifteenMinutesAgo.setMinutes(now.getMinutes() - 15);
+  
+  // Formateamos para la consulta
   const localTime = `${now.getHours().toString().padStart(2, '0')}:${now.getMinutes().toString().padStart(2, '0')}`;
+  const pastTime = `${fifteenMinutesAgo.getHours().toString().padStart(2, '0')}:${fifteenMinutesAgo.getMinutes().toString().padStart(2, '0')}`;
+  
   const dayType = getCurrentDayType();
-  console.log('[getNextTrips] Hora local:', localTime, 'Tipo de día:', dayType);
+  console.log('[getNextTrips] Hora local:', localTime, 'Hora límite pasada:', pastTime, 'Tipo de día:', dayType);
   console.log('[getNextTrips] Buscando viajes de:', origin, 'a', destination);
 
   try {
-    // Aumentamos significativamente el límite para asegurarnos de tener suficientes opciones
+    // Modificamos la consulta para incluir buses desde hace 15 minutos
     const { data, error } = await supabase
       .from('trips')
       .select(`
@@ -119,7 +128,7 @@ export async function getNextTrips(origin: string, destination: string): Promise
         )
       `)
       .eq('day_type', dayType)
-      .gte('departure_time', localTime + ':00')
+      .gte('departure_time', pastTime + ':00') // Incluimos desde 15 min atrás
       .order('departure_time')
       .limit(300);
 
@@ -130,20 +139,23 @@ export async function getNextTrips(origin: string, destination: string): Promise
 
     console.log(`[getNextTrips] Total de viajes obtenidos antes de filtrar: ${data?.length || 0}`);
 
-    // Formatear viajes y extraer información relevante
+    // Formateamos los viajes como antes...
     const formattedTrips = (data || []).map(trip => ({
       id: trip.id,
       route_name: trip.routes?.name || 'Ruta desconeguda',
-      route_num: trip.routes?.num_ruta || '', // Añadir el número de ruta
+      route_num: trip.routes?.num_ruta || '',
       origin_name: trip.routes?.origin?.name || 'Origen desconegut',
       destination_name: trip.routes?.destination?.name || 'Destí desconegut',
       departure_time: trip.departure_time?.substring(0, 5) || '',
       expected_arrival_time: trip.expected_arrival_time?.substring(0, 5) || '',
       status: trip.status || 'scheduled',
       delay_minutes: trip.delay_minutes || 0,
-      occupancy_level: trip.occupancy_level || 'unknown'
+      occupancy_level: trip.occupancy_level || 'unknown',
+      // Añadimos un campo para saber si el bus ya ha pasado
+      has_passed: trip.departure_time < localTime
     }));
-    // Aplicar el filtro
+
+    // Aplicamos el filtro como antes...
     const matchingTrips = formattedTrips.filter(trip => {
       const originMatch = trip.origin_name.toLowerCase().includes(origin.toLowerCase());
       const destMatch = trip.destination_name.toLowerCase().includes(destination.toLowerCase());
@@ -152,13 +164,8 @@ export async function getNextTrips(origin: string, destination: string): Promise
 
     console.log(`[getNextTrips] Encontrados ${matchingTrips.length} viajes que coinciden`);
     
-    // Log detallado de los viajes encontrados
-    matchingTrips.forEach((trip, index) => {
-      console.log(`[getNextTrips] Viaje #${index + 1}: ${trip.origin_name} → ${trip.destination_name} a las ${trip.departure_time}`);
-    });
-    
-    // Limitamos a los primeros 3 resultados
-    const result = matchingTrips.slice(0, 3);
+    // Limitamos a los primeros resultados
+    const result = matchingTrips.slice(0, 6); // Aumentamos el límite para mostrar más buses
     console.log(`[getNextTrips] Retornando ${result.length} viajes`);
     
     return result;

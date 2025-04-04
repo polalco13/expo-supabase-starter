@@ -60,18 +60,18 @@ export default function HomeScreen() {
         setLocations(locationData);
         if (locationData.length > 0) {
           // Establecemos valores por defecto y cargamos destinos para el origen por defecto
-          setOrigin(locationData[0]);
+          setOrigin(locationData[1]);
           if (locationData.length > 1) {
-            setDestination(locationData[1]);
+            setDestination(locationData[7]);
           }
-          const dests = await getDestinationsByOrigin(locationData[0].id);
+          const dests = await getDestinationsByOrigin(locationData[7].id);
           setDestinations(dests);
           if (!dests.find(dest => locationData[1] && dest.id === locationData[1].id)) {
             setDestination(dests.length > 0 ? dests[0] : null);
           }
         }
       } catch (error) {
-        console.error("Error loading locations:", error);
+        console.error("Error fetching locations:", error);
       }
     };
     loadLocations();
@@ -260,6 +260,7 @@ export default function HomeScreen() {
                   time={trip.departure_time}
                   routeNumber={trip.route_num}
                   incidents={incidenciesByRoute[trip.id]}
+                  has_passed={trip.has_passed} // Pasamos el nuevo campo
                   onReportSuccess={handleReportSuccess}
                 />
               ))
@@ -346,20 +347,10 @@ export default function HomeScreen() {
             selectedDay={selectedDay}
             origin={origin ? origin.name : ""}
             destination={destination ? destination.name : ""}
-            incidenciesByRoute={incidenciesByRoute}
             onClose={() => setShowAllTrips(false)}
           />
         </View>
       )}
-      
-      {/* Botón flotante para ver todas las incidencias */}
-      <TouchableOpacity
-        onPress={() => router.push('/all-incidents')}
-        className="absolute bottom-24 right-4 bg-blue-500 w-14 h-14 rounded-full shadow-lg items-center justify-center"
-        style={{ elevation: 5 }}
-      >
-        <AlertCircle size={24} color="white" />
-      </TouchableOpacity>
     </SafeAreaView>
   );
 }

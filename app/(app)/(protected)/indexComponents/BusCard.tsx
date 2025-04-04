@@ -12,6 +12,7 @@ interface BusCardProps {
   origin: string;
   destination: string;
   time: string;
+  has_passed?: boolean;
   routeNumber?: string; // Este será el num_ruta de la tabla routes
   incidents?: {
     count: number;
@@ -25,11 +26,10 @@ export function BusCard({
   line, 
   origin, 
   destination, 
-  time, 
-  status, 
-  occupancy, 
+  time,
   routeNumber, // Nuevo parámetro
   incidents,
+  has_passed = false, // Nuevo parámetro
   onReportSuccess = () => {} 
 }: BusCardProps) {
   const [reportModalVisible, setReportModalVisible] = useState(false);
@@ -56,7 +56,14 @@ export function BusCard({
   };
 
   return (
-    <View className="bg-white p-4 rounded-lg mb-3 shadow-sm relative">
+    <View className={`bg-white p-4 rounded-lg mb-3 shadow-sm relative ${has_passed ? 'border-l-4 border-orange-400' : ''}`}>
+      {/* Indicador visual para buses que ya pasaron */}
+      {has_passed && (
+        <View className="absolute top-2 left-2 bg-orange-100 px-2 py-1 rounded-full">
+          <Text className="text-orange-600 text-xs font-medium">Bus pasado (15min)</Text>
+        </View>
+      )}
+      
       {/* Indicador de incidencias */}
       {renderIncidentsBadge()}
       
@@ -98,6 +105,16 @@ export function BusCard({
         <Clock size={16} color="#666" />
         <Text className="ml-1 font-medium">{time}</Text>
       </View>
+      
+      {/* Mensaje adicional cuando el bus ya ha pasado */}
+      {has_passed && (
+        <View className="mt-2 bg-orange-50 rounded-lg p-2 flex-row items-center border border-orange-100">
+          <Clock size={16} color="#f97316" />
+          <Text className="ml-2 text-orange-700 text-sm">
+            Aquest bus ja ha passat. Encara pots reportar incidències durant 15 minuts.
+          </Text>
+        </View>
+      )}
       
       {/* Botones para acciones */}
       <View className="mt-3 flex-row border-t border-gray-100 pt-2">

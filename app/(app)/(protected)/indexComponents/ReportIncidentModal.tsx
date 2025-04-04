@@ -147,7 +147,7 @@ export function ReportIncidentModal({
           </ScrollView>
           
           {/* Botones de acción */}
-          <View className="p-4 border-t border-gray-100">
+          <View className="p-4 border-t border-gray-100 mb-5">
             <Button
               className={selectedIncident ? "bg-blue-500" : "bg-gray-300"}
               onPress={handleSubmit}
